@@ -11,8 +11,7 @@ import matplotlib
 
 # Set the matplotlib backend (adjust if needed for your system)
 # Common options: 'QtAgg', 'TkAgg', 'Agg' (for headless)
-# Use 'Agg' for headless operation (no GUI windows) which is safer for parallel processing
-matplotlib.use('Agg')  # Non-interactive backend - safer for parallel processing
+matplotlib.use('QtAgg')
 
 # ######## USER-DEFINED VARIABLES #########
 
@@ -21,7 +20,11 @@ image_resolution = [1920, 1080]  # [width, height] in pixels
 # image_resolution = [3840, 2160]   # 4K resolution
 
 # Generation settings
+<<<<<<< HEAD
 timesteps = 5e7  # Number of points to calculate (1E8 for highest quality, 3E6 for quick testing)
+=======
+timesteps = 1e8  # Number of points to calculate (1E8 for high quality, 1E6 for quick testing)
+>>>>>>> parent of 57b1afb (Attempts at fixing parallel processing)
 num_images = 1   # How many separate images to generate
 
 # Coefficient settings
@@ -59,9 +62,7 @@ results = sa_utils.generate_strange_attractor_images(
     save_image=save_image,
     gauss_smoothing=gauss_smoothing,
     colormap_name=colormap_name,
-    background_color=background_color,
-    use_parallel=True,  # Enable parallel processing
-    max_parallel_processes=4  # Limit to 4 processes to avoid timeouts (adjust as needed)
+    background_color=background_color
 )
 
 print("=" * 50)

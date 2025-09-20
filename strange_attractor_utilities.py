@@ -6,10 +6,6 @@ Inspired by the structure of the Paint-Pours project for consistency and modular
 """
 
 import matplotlib
-# Set non-interactive backend for worker processes to prevent GUI issues
-import multiprocessing as mp
-if mp.current_process().name != 'MainProcess':
-    matplotlib.use('Agg')  # Non-interactive backend for worker processes
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.ndimage import gaussian_filter
@@ -17,6 +13,7 @@ import numpy as np
 import time
 from numba import njit
 import os
+import multiprocessing as mp
 
 
 @njit(fastmath=True)                
@@ -131,16 +128,12 @@ def pick_random_colormap(print_choice=False, show_plot=False):
         print(f'\t Chosen base colormap: {cmap.name}')
     
     if show_plot:
-        # Only show plot in main process to avoid worker process GUI issues
-        if mp.current_process().name == 'MainProcess':
-            fig, ax = plt.subplots(figsize=(12, 2))
-            ax.imshow(np.outer(np.ones(100), np.arange(0, 1, 0.0001)), cmap=cmap, origin='lower', extent=[0, 1, 0, 0.1])
-            ax.set_yticks([])
-            ax.set_title(f'Your randomly-chosen base colormap: {cmap.name}')
-            fig.tight_layout()
-            plt.show(block=False)
-        else:
-            print(f'Worker process: chosen colormap {cmap.name} (plot suppressed)')
+        fig, ax = plt.subplots(figsize=(12, 2))
+        ax.imshow(np.outer(np.ones(100), np.arange(0, 1, 0.0001)), cmap=cmap, origin='lower', extent=[0, 1, 0, 0.1])
+        ax.set_yticks([])
+        ax.set_title(f'Your randomly-chosen base colormap: {cmap.name}')
+        fig.tight_layout()
+        plt.show(block=False)
     
     return cmap
 
@@ -328,11 +321,6 @@ class StrangeAttractor:
         """Create and display/save the final plot."""
         if self.final_image is None:
             raise ValueError("Must process image first")
-        
-        # Only create plots in main process to avoid worker process GUI issues
-        if mp.current_process().name != 'MainProcess':
-            print("Skipping plot creation in worker process")
-            return None, None
         
         # Select colormap
         colormap = self._select_colormap()

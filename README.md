@@ -103,7 +103,7 @@ image = attractor.generate()
 - numba (for fast calculation)
 - time, os (standard library)
 
-## Approximate Performance (with parallel processing)
+## Approximate Performance
 
 - Small test (100x100, 1e6 steps): <1 second
 - Medium quality (1920x1080, 1e7 steps): ~2 seconds
