@@ -1,26 +1,19 @@
-"""
-Strange Attractor Sandbox
-
-A user-friendly script for generating Peter de Jong strange attractor images.
-This script allows you to easily specify coefficients and generate multiple images.
-
-"""
-
 import strange_attractor_utilities as sa_utils
 import matplotlib
-
-# Set the matplotlib backend (adjust if needed for your system)
-# Common options: 'QtAgg', 'TkAgg', 'Agg' (for headless)
 matplotlib.use('QtAgg')
 
 # ######## USER-DEFINED VARIABLES #########
 
 # Image settings
-image_resolution = [1920, 1080]  # [width, height] in pixels
+# CAUTION, if you select a resolution larger than your current screen, uncomment the following line to change
+# the plotting backend to 'Agg', otherwise the saved images will be improperly rendered.
+# matplotlib.use('Agg')  
+# image_resolution = [1920, 1080]  # [width, height] in pixels
+image_resolution = [2560, 1440]   # QHD resolution
 # image_resolution = [3840, 2160]   # 4K resolution
 
 # Generation settings
-timesteps = 5e7  # Number of points to calculate (1E8 for highest quality, 3E6 for quick testing)
+timesteps = 1e7  # Number of points to calculate (1E8 for highest quality, 3E6 for quick testing)
 num_images = 1   # How many separate images to generate
 
 # Coefficient settings

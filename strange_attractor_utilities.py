@@ -326,19 +326,12 @@ class StrangeAttractor:
         
         # Create figure with exact dimensions
         my_dpi = 120
-        fig, ax = plt.subplots(figsize=(self.image_resolution[0] / my_dpi, self.image_resolution[1] / my_dpi), 
-                              dpi=my_dpi, frameon=False)
+        fig, ax = plt.subplots(1, figsize=(self.image_resolution[0] / my_dpi, self.image_resolution[1] / my_dpi))
         ax = plt.Axes(fig, [0., 0., 1., 1.])  # Make plot take up entire figure
-        ax.set_axis_off()
         fig.add_axes(ax)
         
         # Display image with colormap
-        if colormap.name == 'ocean':
-            ax.imshow(self.final_image, cmap=colormap, aspect='equal', vmin=self.histogram.min() + 0.0001)
-        elif colormap.name == 'customdark':
-            ax.imshow(self.final_image, cmap=colormap, aspect='equal', vmin=self.histogram.min() + 0.0001)
-        else:
-            ax.imshow(self.final_image, cmap=colormap, aspect='equal', vmin=self.histogram.min() + 0.0000)
+        ax.imshow(self.final_image, cmap=colormap, aspect='equal', vmin=self.histogram.min() + 0.0000)
         
         if self.save_image:
             self._save_image(fig, my_dpi)
@@ -350,7 +343,7 @@ class StrangeAttractor:
         
         return fig, ax
     
-    def _save_image(self, fig, dpi):
+    def _save_image(self, fig, dpi=120):
         """Save the image to disk."""
         # Create output directory if it doesn't exist
         if not os.path.exists(self.output_directory):
