@@ -6,6 +6,10 @@ Inspired by the structure of the Paint-Pours project for consistency and modular
 """
 
 import matplotlib
+# Set non-interactive backend for worker processes to prevent GUI issues
+import multiprocessing as mp
+if mp.current_process().name != 'MainProcess':
+    matplotlib.use('Agg')  # Non-interactive backend for worker processes
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from scipy.ndimage import gaussian_filter
@@ -13,7 +17,6 @@ import numpy as np
 import time
 from numba import njit
 import os
-import multiprocessing as mp
 
 
 @njit(fastmath=True)                
@@ -174,12 +177,16 @@ def pick_random_colormap(print_choice=False, show_plot=False):
         print(f'\t Chosen base colormap: {cmap.name}')
     
     if show_plot:
-        fig, ax = plt.subplots(figsize=(12, 2))
-        ax.imshow(np.outer(np.ones(100), np.arange(0, 1, 0.0001)), cmap=cmap, origin='lower', extent=[0, 1, 0, 0.1])
-        ax.set_yticks([])
-        ax.set_title(f'Your randomly-chosen base colormap: {cmap.name}')
-        fig.tight_layout()
-        plt.show(block=False)
+        # Only show plot in main process to avoid worker process GUI issues
+        if mp.current_process().name == 'MainProcess':
+            fig, ax = plt.subplots(figsize=(12, 2))
+            ax.imshow(np.outer(np.ones(100), np.arange(0, 1, 0.0001)), cmap=cmap, origin='lower', extent=[0, 1, 0, 0.1])
+            ax.set_yticks([])
+            ax.set_title(f'Your randomly-chosen base colormap: {cmap.name}')
+            fig.tight_layout()
+            plt.show(block=False)
+        else:
+            print(f'Worker process: chosen colormap {cmap.name} (plot suppressed)')
     
     return cmap
 
@@ -205,6 +212,7 @@ class StrangeAttractor:
                  background_color=None,
                  chunk_size=1e7,
                  use_parallel=True,
+                 max_parallel_processes=None,
                  **kwargs):
         """
         Initialize the StrangeAttractor object.
@@ -237,6 +245,9 @@ class StrangeAttractor:
             Size of calculation chunks to manage memory (default is 1e7)
         use_parallel : bool, optional
             Whether to use parallel processing for multiple chunks (default is True)
+        max_parallel_processes : int, optional
+            Maximum number of parallel processes to use. If None, uses all CPU cores.
+            Set to a lower number if experiencing timeouts (e.g., 2 or 4)
         """
         
         # Store coefficients
@@ -253,6 +264,7 @@ class StrangeAttractor:
         self.background_color = background_color
         self.chunk_size = int(chunk_size)
         self.use_parallel = use_parallel
+        self.max_parallel_processes = max_parallel_processes
         
         # Initialize coefficients
         self._initialize_coefficients()
@@ -320,6 +332,11 @@ class StrangeAttractor:
         # Calculate number of chunks and available CPU cores
         num_chunks = max(1, round(self.timesteps / self.chunk_size))
         num_cores = mp.cpu_count()
+        
+        # Limit number of processes if specified
+        if self.max_parallel_processes is not None:
+            num_cores = min(num_cores, self.max_parallel_processes)
+            print(f'Limited to {num_cores} processes (max_parallel_processes={self.max_parallel_processes})')
         
         # Decide whether to use parallel processing, and issue a helpful print statement
         use_parallel = self.use_parallel and num_chunks > 1 and num_cores > 1
@@ -393,29 +410,54 @@ class StrangeAttractor:
                     mp_context = mp.get_context('spawn')
                     with mp_context.Pool(processes=min(num_cores, len(chunk_params_list))) as pool:
                         print(f'Starting parallel processing of {len(chunk_params_list)} remaining chunks...')
+                        print('Using timeout of 30 seconds per chunk')
+                        
+                        # Pre-warm the numba JIT in the main process to reduce worker startup time
+                        try:
+                            # This triggers numba compilation in main process
+                            test_x = np.zeros(100)
+                            test_y = np.zeros(100)
+                            attractor(test_x, test_y, 100, self.a, self.b, self.c, self.d)
+                            print('Numba JIT pre-compilation completed')
+                        except Exception:
+                            pass  # If pre-compilation fails, continue anyway
                         
                         # Submit all chunks as individual async tasks to track progress
                         async_results = []
                         for i, params in enumerate(chunk_params_list):
                             async_result = pool.apply_async(calculate_chunk, (params,))
                             async_results.append(async_result)
+                        print(f'Submitted {len(async_results)} tasks to worker pool')
                         
                         # Collect results as they complete
                         chunk_histograms = []
                         for i, async_result in enumerate(async_results):
-                            chunk_hist = async_result.get(timeout=10)  # timeout per chunk
-                            chunk_histograms.append(chunk_hist)
-                            print(f'Finished chunk {i + 2} of {num_chunks}')  # +2 because first chunk was done already
+                            try:
+                                print(f'Waiting for chunk {i + 2} of {num_chunks}...')
+                                start_chunk_time = time.time()
+                                chunk_hist = async_result.get(timeout=30)  # timeout per chunk
+                                chunk_time = time.time() - start_chunk_time
+                                chunk_histograms.append(chunk_hist)
+                                print(f'Finished chunk {i + 2} of {num_chunks} in {chunk_time:.2f}s')
+                            except mp.TimeoutError:
+                                print(f'TIMEOUT: Chunk {i + 2} timed out after 30 seconds')
+                                raise  # Re-raise to trigger fallback
                         
                 except mp.TimeoutError:
                     print('WARNING: Parallel processing timed out, falling back to serial processing...')
                     # Fallback to serial processing
                     chunk_histograms = []
                     for i, params in enumerate(chunk_params_list):
-                        print(f'Processing chunk {i + 1} of {num_chunks}...')
+                        print(f'Processing chunk {i + 2} of {num_chunks} serially...')
                         chunk_histograms.append(calculate_chunk(params))
                 except Exception as e:
-                    raise RuntimeError(f'Parallel processing failed: {e}')
+                    print(f'Parallel processing failed with error: {e}')
+                    print('Falling back to serial processing...')
+                    # Fallback to serial processing
+                    chunk_histograms = []
+                    for i, params in enumerate(chunk_params_list):
+                        print(f'Processing chunk {i + 2} of {num_chunks} serially...')
+                        chunk_histograms.append(calculate_chunk(params))
 
                 # Sum all chunk histograms
                 for i, chunk_hist in enumerate(chunk_histograms, 2):
@@ -446,6 +488,11 @@ class StrangeAttractor:
         """Create and display/save the final plot."""
         if self.final_image is None:
             raise ValueError("Must process image first")
+        
+        # Only create plots in main process to avoid worker process GUI issues
+        if mp.current_process().name != 'MainProcess':
+            print("Skipping plot creation in worker process")
+            return None, None
         
         # Select colormap
         colormap = self._select_colormap()
