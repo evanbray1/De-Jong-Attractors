@@ -1,15 +1,8 @@
-## Project Structure
+## Overview
 
-```
-De-Jong-Attractors/
-├── strange_attractor_utilities.py    # Core utilities and StrangeAttractor class
-├── strange_attractor_sandbox.py      # Main user script for generating images
-├── outputs/                          # Generated images (in .gitignore)
-├── .gitignore                        # Git ignore file
-├── .copilotinstructions.md           # GitHub Copilot instructions
-├── README.md                         # This file
-└── Strange Attractor Plotter.py      # Original script (preserved)
-```
+This project provides tools for generating and visualizing De Jong strange attractors. Users can specify as many or as few parameters as they'd like, and the remainder will be chosen automatically.
+
+The intent of this tool is that users can quickly produce many widely-varying, randomly-generated strange attractors, identify their favorites, and re-render them in high-quality for use as wallpapers on their phone or computer. 
 
 ## Quick Start
 
@@ -110,7 +103,7 @@ image = attractor.generate()
 
 ## Approximate Performance
 
-- Small test (100x100, 1e6 steps): ~0.2 seconds
+- Small test (100x100, 1e6 steps): <1 second
 - Medium quality (1920x1080, 1e7 steps): ~2 seconds
 - High quality (1920x1080, 1e8 steps): ~15 seconds
 - Extreme quality (2560x1440, 1e9 steps): ~2 minutes
