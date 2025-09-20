@@ -25,7 +25,7 @@ num_images = 1   # How many separate images to generate
 
 # Coefficient settings
 coefficient_values = None          # Specific [a, b, c, d] values (set to None for random)
-coefficient_values = [2.76, -1.15, 0.50, -4.5]  # Example specific values
+# coefficient_values = [2.76, -1.15, 0.50, -4.5]  # Example specific values
 coefficient_max = 5               # Maximum absolute value for random coefficients
 
 # Output settings
@@ -36,7 +36,7 @@ display_image = True               # Display images on screen
 # Visual settings
 gauss_smoothing = 0.5          # Standard deviation for smoothing (set to 0 for no smoothing)
 colormap_name = None           # Specific colormap name (None for random selection)
-colormap_name = 'inferno'     # Example: use a specific colormap
+# colormap_name = 'inferno'     # Example: use a specific colormap
 background_color = None        # Background color (None = use lowest colormap value)
 # background_color = 'black'    # Example: black background
 # background_color = 'white'    # Example: white background
