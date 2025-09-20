@@ -19,10 +19,9 @@ matplotlib.use('Agg')  # Non-interactive backend - safer for parallel processing
 # Image settings
 image_resolution = [1920, 1080]  # [width, height] in pixels
 # image_resolution = [3840, 2160]   # 4K resolution
-# image_resolution = [2560, 1440]   # QHD resolution
 
 # Generation settings
-timesteps = 8e7  # Number of points to calculate (1E8 for high quality, 1E6 for quick testing)
+timesteps = 5e7  # Number of points to calculate (1E8 for highest quality, 3E6 for quick testing)
 num_images = 1   # How many separate images to generate
 
 # Coefficient settings
@@ -37,7 +36,7 @@ display_image = True               # Display images on screen
 
 # Visual settings
 gauss_smoothing = 0.5          # Standard deviation for smoothing (set to 0 for no smoothing)
-# colormap_name = None           # Specific colormap name (None for random selection)
+colormap_name = None           # Specific colormap name (None for random selection)
 colormap_name = 'inferno'     # Example: use a specific colormap
 background_color = None        # Background color (None = use lowest colormap value)
 # background_color = 'black'    # Example: black background
@@ -47,7 +46,7 @@ background_color = None        # Background color (None = use lowest colormap va
 show_troubleshooting_plots = False  # Show intermediate plots for debugging
 
 # ######## GENERATION CODE #########
-print(f"\nGenerating images with {timesteps:.0f} timesteps each...")
+
 results = sa_utils.generate_strange_attractor_images(
     num_images=num_images,
     image_resolution=image_resolution,
