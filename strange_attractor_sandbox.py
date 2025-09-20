@@ -20,11 +20,7 @@ image_resolution = [1920, 1080]  # [width, height] in pixels
 # image_resolution = [3840, 2160]   # 4K resolution
 
 # Generation settings
-<<<<<<< HEAD
 timesteps = 5e7  # Number of points to calculate (1E8 for highest quality, 3E6 for quick testing)
-=======
-timesteps = 1e8  # Number of points to calculate (1E8 for high quality, 1E6 for quick testing)
->>>>>>> parent of 57b1afb (Attempts at fixing parallel processing)
 num_images = 1   # How many separate images to generate
 
 # Coefficient settings

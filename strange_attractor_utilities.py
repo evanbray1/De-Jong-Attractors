@@ -13,7 +13,6 @@ import numpy as np
 import time
 from numba import njit
 import os
-import multiprocessing as mp
 
 
 @njit(fastmath=True)                
