@@ -1,4 +1,6 @@
-## Overview
+<img width="1641" height="941" alt="image" src="https://github.com/user-attachments/assets/83e30039-74f5-40d3-8cf2-c0edee55d596" />
+
+## Project Structure
 
 This project provides tools for generating and visualizing De Jong strange attractors. Users can specify as many or as few parameters as they'd like, and the remainder will be chosen automatically.
 
