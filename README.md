@@ -43,7 +43,7 @@ The intent of this tool is that users can quickly produce many widely-varying, r
 
 ## Key Features
 
-### coefficient Control
+### Input Coefficient Control
 - **Specific values**: Set `coefficient_values=[a, b, c, d]` for precise control, or leave `coefficient_values=None` (default) for random coefficients
 
 ### Image Quality
@@ -60,7 +60,8 @@ The intent of this tool is that users can quickly produce many widely-varying, r
 
 ### Advanced Features
 - **Troubleshooting**: `show_troubleshooting_plots=True` for debugging
-- **Memory management**: `chunk_size=1e6` for large calculations
+- **Memory management**: `chunk_size=1e7` for large calculations
+- **Parallel processing**: `use_parallel=True` automatically uses all CPU cores for faster generation
 - **Object-based**: All plots use matplotlib object-oriented interface
 
 ## Usage Recommendations
@@ -107,6 +108,6 @@ image = attractor.generate()
 
 - Small test (100x100, 1e6 steps): <1 second
 - Medium quality (1920x1080, 1e7 steps): ~2 seconds
-- High quality (1920x1080, 1e8 steps): ~15 seconds
-- Extreme quality (2560x1440, 1e9 steps): ~2 minutes
+- High quality (1920x1080, 1e8 steps): ~6 seconds
+- Extreme quality (2560x1440, 1e9 steps): ~25 seconds
 

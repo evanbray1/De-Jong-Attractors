@@ -13,6 +13,7 @@ import numpy as np
 import time
 from numba import njit
 import os
+import multiprocessing as mp
 
 
 @njit(fastmath=True)                
@@ -40,6 +41,52 @@ def attractor(x, y, num_steps, a, b, c, d):
         x[i] = np.sin(a * y[i - 1]) - np.cos(b * x[i - 1])
         y[i] = np.sin(c * x[i - 1]) - np.cos(d * y[i - 1]) 
     return x, y
+
+
+def calculate_chunk(chunk_params):
+    """
+    Calculate a single chunk of the attractor and return its histogram.
+    This function is designed to be called by multiprocessing workers.
+    
+    Parameters
+    ----------
+    chunk_params : tuple
+        (chunk_size, a, b, c, d, image_resolution, bin_edges_x, bin_edges_y, start_x, start_y)
+        
+    Returns
+    -------
+    histogram : np.ndarray
+        2D histogram of the chunk
+    """
+    try:
+        chunk_size, a, b, c, d, image_resolution, bin_edges_x, bin_edges_y, start_x, start_y = chunk_params
+        
+        # Initialize arrays for this chunk
+        x = np.zeros(int(chunk_size))
+        y = np.zeros(int(chunk_size))
+        x[0] = start_x
+        y[0] = start_y
+        
+        # Calculate the attractor sequence for this chunk
+        x, y = attractor(x, y, chunk_size, a, b, c, d)
+        
+        # Create histogram for this chunk
+        if bin_edges_x is not None and bin_edges_y is not None:
+            # Use provided bin edges for consistency
+            chunk_hist, _, _ = np.histogram2d(x, y, bins=[bin_edges_x, bin_edges_y])
+        else:
+            # First chunk - calculate bin edges
+            chunk_hist, bin_edges_x, bin_edges_y = np.histogram2d(x, y, bins=image_resolution)
+            return chunk_hist, bin_edges_x, bin_edges_y
+        
+        return chunk_hist
+    except Exception as e:
+        print(f'Error in calculate_chunk: {e}')
+        # Return zero histogram as fallback
+        if bin_edges_x is not None and bin_edges_y is not None:
+            return np.zeros((len(bin_edges_x) - 1, len(bin_edges_y) - 1))
+        else:
+            return np.zeros(image_resolution), None, None
 
 
 def darken_cmap(function, cmap):
@@ -157,6 +204,7 @@ class StrangeAttractor:
                  colormap_name=None,
                  background_color=None,
                  chunk_size=1e7,
+                 use_parallel=True,
                  **kwargs):
         """
         Initialize the StrangeAttractor object.
@@ -187,6 +235,8 @@ class StrangeAttractor:
             Color name for background (set_under value). If None, uses lowest colormap value
         chunk_size : float, optional
             Size of calculation chunks to manage memory (default is 1e7)
+        use_parallel : bool, optional
+            Whether to use parallel processing for multiple chunks (default is True)
         """
         
         # Store coefficients
@@ -202,6 +252,7 @@ class StrangeAttractor:
         self.colormap_name = colormap_name
         self.background_color = background_color
         self.chunk_size = int(chunk_size)
+        self.use_parallel = use_parallel
         
         # Initialize coefficients
         self._initialize_coefficients()
@@ -263,37 +314,112 @@ class StrangeAttractor:
         return self.colormap
     
     def calculate_attractor(self):
-        """Calculate the strange attractor points."""
+        """Calculate the strange attractor points using parallel processing when beneficial."""
         print('Starting calculations...')
         
-        # Initialize
-        x = np.zeros(self.chunk_size)
-        y = np.zeros(self.chunk_size)
+        # Calculate number of chunks and available CPU cores
+        num_chunks = max(1, round(self.timesteps / self.chunk_size))
+        num_cores = mp.cpu_count()
         
-        # Calculate number of chunks
-        num_chunks = round(self.timesteps / self.chunk_size)
+        # Decide whether to use parallel processing, and issue a helpful print statement
+        use_parallel = self.use_parallel and num_chunks > 1 and num_cores > 1
+        if use_parallel:
+            print(f'Using {num_cores} CPU cores for {num_chunks} chunks')
+        else:
+            if num_chunks == 1:
+                print('num_chunks = 1, no parallelization needed!')
+            else:
+                print(f'Serial calculation of {num_chunks} chunks')
         
-        # Calculate first chunk
-        x, y = attractor(x, y, self.chunk_size, self.a, self.b, self.c, self.d)
-        
-        # Create initial histogram for this first chunk and save the bin edges
-        self.histogram, bin_edges_x, bin_edges_y = np.histogram2d(x, y, bins=self.image_resolution)
-        print(f'Finished chunk 1 of {num_chunks}')
-        
-        # Calculate remaining chunks if needed
-        if self.timesteps > self.chunk_size:
-            for i in range(1, num_chunks):
-                # Pick random starting point from last chunk, to ensure this chunk isn't identical to the first
-                x[0] = np.random.choice(x)
-                y[0] = np.random.choice(y)
-
-                x, y = attractor(x, y, self.chunk_size, self.a, self.b, self.c, self.d)
-
-                # Histogram this chunk and add to histogram using the same bin edges
-                chunk_hist, _, _ = np.histogram2d(x, y, bins=[bin_edges_x, bin_edges_y])
-                self.histogram += chunk_hist
+        # If there's only one chunk to calculate, or we're not using parallel processing
+        if num_chunks == 1 or not use_parallel:
+            # Single chunk or serial processing
+            if num_chunks == 1:
+                # True single chunk
+                x = np.zeros(int(self.chunk_size))
+                y = np.zeros(int(self.chunk_size))
                 
-                print(f'Finished chunk {i + 1} of {num_chunks}')
+                x, y = attractor(x, y, self.chunk_size, self.a, self.b, self.c, self.d)
+                self.histogram, _, _ = np.histogram2d(x, y, bins=self.image_resolution)
+                print('Finished chunk 1 of 1')
+            else:
+                # Multiple chunks but serial processing (original method)
+                x = np.zeros(int(self.chunk_size))
+                y = np.zeros(int(self.chunk_size))
+                
+                # Calculate first chunk
+                x, y = attractor(x, y, self.chunk_size, self.a, self.b, self.c, self.d)
+                self.histogram, bin_edges_x, bin_edges_y = np.histogram2d(x, y, bins=self.image_resolution)
+                print(f'Finished chunk 1 of {num_chunks}')
+                
+                # Calculate remaining chunks serially
+                for i in range(1, num_chunks):
+                    # Pick random starting point, otherwise this chunk will look identical to the first
+                    x[0] = np.random.choice(x)
+                    y[0] = np.random.choice(y)
+                    
+                    x, y = attractor(x, y, self.chunk_size, self.a, self.b, self.c, self.d)
+                    
+                    # Histogram this chunk and add to histogram using the same bin edges
+                    chunk_hist, _, _ = np.histogram2d(x, y, bins=[bin_edges_x, bin_edges_y])
+                    self.histogram += chunk_hist
+                    
+                    print(f'Finished chunk {i + 1} of {num_chunks}')
+        else:
+            # Multiple chunks with parallel processing
+            
+            # Calculate first chunk to establish bin edges
+            first_chunk_params = (self.chunk_size, self.a, self.b, self.c, self.d, 
+                                self.image_resolution, None, None, 0.5, 0.5)
+            first_result = calculate_chunk(first_chunk_params)
+            self.histogram, bin_edges_x, bin_edges_y = first_result
+            print(f'Finished chunk 1 of {num_chunks}')
+            
+            # For the remaining chunks, prepare parameters for each. 
+            if num_chunks > 1:
+                # Prepare parameters for remaining chunks
+                chunk_params_list = []
+                for i in range(1, num_chunks):
+                    # Pick random starting point from within the range of x/y values in the first chunk, otherwise this chunk will look identical to the first
+                    start_x = np.random.choice(bin_edges_x[1:-2])  # Avoid edges
+                    start_y = np.random.choice(bin_edges_y[1:-2])  # Avoid edges
+                    chunk_params = (self.chunk_size, self.a, self.b, self.c, self.d,
+                                  self.image_resolution, bin_edges_x, bin_edges_y, start_x, start_y)
+                    chunk_params_list.append(chunk_params)
+                
+                # Process chunks in parallel
+                try:
+                    # Set spawn method for Windows compatibility
+                    mp_context = mp.get_context('spawn')
+                    with mp_context.Pool(processes=min(num_cores, len(chunk_params_list))) as pool:
+                        print(f'Starting parallel processing of {len(chunk_params_list)} remaining chunks...')
+                        
+                        # Submit all chunks as individual async tasks to track progress
+                        async_results = []
+                        for i, params in enumerate(chunk_params_list):
+                            async_result = pool.apply_async(calculate_chunk, (params,))
+                            async_results.append(async_result)
+                        
+                        # Collect results as they complete
+                        chunk_histograms = []
+                        for i, async_result in enumerate(async_results):
+                            chunk_hist = async_result.get(timeout=10)  # timeout per chunk
+                            chunk_histograms.append(chunk_hist)
+                            print(f'Finished chunk {i + 2} of {num_chunks}')  # +2 because first chunk was done already
+                        
+                except mp.TimeoutError:
+                    print('WARNING: Parallel processing timed out, falling back to serial processing...')
+                    # Fallback to serial processing
+                    chunk_histograms = []
+                    for i, params in enumerate(chunk_params_list):
+                        print(f'Processing chunk {i + 1} of {num_chunks}...')
+                        chunk_histograms.append(calculate_chunk(params))
+                except Exception as e:
+                    raise RuntimeError(f'Parallel processing failed: {e}')
+
+                # Sum all chunk histograms
+                for i, chunk_hist in enumerate(chunk_histograms, 2):
+                    self.histogram += chunk_hist
         
         # Log-scale the histogram (from original script)
         self.histogram = np.log10(self.histogram + 0.01)
